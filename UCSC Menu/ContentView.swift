@@ -29,6 +29,10 @@ struct ContentView: View {
             .toolbar {
                 EditButton()
             }
+            .refreshable {
+                let fetched = await provider.fetchAvailableLocations()
+                loadOrder(fetchedLocations: fetched)
+            }
             .environment(\.editMode, $editMode)
             .onAppear {
                 Task {

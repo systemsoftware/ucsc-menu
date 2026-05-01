@@ -49,6 +49,14 @@ struct MenuView: View {
                         }
                         .padding()
                     }
+                    .refreshable {
+                        Task {
+                            if let url = provider.getMenuURL(for: location)?.absoluteString {
+                                let fetched = await fetchAndParseMenu(urlString: url)
+                                self.menu = fetched
+                            }
+                        }
+                    }
                 }
             }
         }

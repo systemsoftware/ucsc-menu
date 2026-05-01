@@ -88,7 +88,6 @@ func fetchAndParseMenu(urlString: String) async -> [Meal] {
         let html = String(data: data, encoding: .utf8) ?? ""
         let doc: Document = try SwiftSoup.parse(html)
         
-        // Menu is organized by <td> with width 50% for each meal
         let mealTables = try doc.select("td[width=50%]")
         var dailyMenus: [Meal] = []
         
@@ -98,10 +97,10 @@ func fetchAndParseMenu(urlString: String) async -> [Meal] {
             
             var currentMeal = Meal(mealName: mealName, categories: [])
             let rows = try mealTable.select("tr")
-            var currentCategory: MenuCategory?
+            
+            var currentCategory: MenuCategory? = nil
             
             for row in rows {
-                // 1. Explicitly skip the instructions and nutrition calculator containers
                 if try !row.select(".shortmenuinstructs").isEmpty() ||
                    !row.select(".shortmenunutritive").isEmpty() {
                     continue
@@ -114,20 +113,25 @@ func fetchAndParseMenu(urlString: String) async -> [Meal] {
                     let catName = try categoryElement.text()
                         .replacingOccurrences(of: "--", with: "")
                         .trimmingCharacters(in: .whitespaces)
-       
-                    if let finishedCat = currentCategory {
+                    
+                    if catName.lowercased() == mealName.lowercased() || catName.count > 40 {
+                        continue
+                    }
+                    
+                    if let finishedCat = currentCategory, !finishedCat.items.isEmpty {
                         currentMeal.categories.append(finishedCat)
                     }
                     currentCategory = MenuCategory(categoryName: catName, items: [])
-                }
-                else if !recipeElement.isEmpty() {
-                    let itemName = try recipeElement.text().trimmingCharacters(in: .whitespaces)
                     
-                    // 3. RECIPE GUARD: Skip if it's the nutrition calculator or navigational junk
-                    let lowerItem = itemName.lowercased()
-                    if lowerItem.contains("nutrition calculator") ||
-                       lowerItem.contains("go to top") ||
-                       itemName.count < 2 {
+                } else if !recipeElement.isEmpty() {
+                    guard let nameElement = try recipeElement.select("span, a").first() else { continue }
+                    let itemName = try nameElement.text().trimmingCharacters(in: .whitespaces)
+                    
+                    if itemName.lowercased().contains("go to top") || itemName.count < 2 {
+                        continue
+                    }
+
+                    if currentCategory?.items.contains(where: { $0.name == itemName }) == true {
                         continue
                     }
 
@@ -140,19 +144,17 @@ func fetchAndParseMenu(urlString: String) async -> [Meal] {
                 }
             }
             
-            
-            if let lastCat = currentCategory {
+            // Add the final category of the meal
+            if let lastCat = currentCategory, !lastCat.items.isEmpty {
                 currentMeal.categories.append(lastCat)
             }
+            
             dailyMenus.append(currentMeal)
         }
-        
-        return dailyMenus // Success path
+        return dailyMenus
         
     } catch {
         print("Parsing error: \(error)")
-        // Return empty array here or fall through to the final return
+        return []
     }
-    
-    return [] // Final return to satisfy Swift's requirements
 }
