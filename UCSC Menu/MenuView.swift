@@ -29,7 +29,7 @@ struct MenuView: View {
             } else {
                 VStack(spacing: 0) {
 
-                    if !availableMeals.isEmpty {
+                    if availableMeals.count > 1 {
                         Picker("Meal", selection: $selectedMealName) {
                             Text("All").tag("all")
                             ForEach(availableMeals, id: \.self) { name in
@@ -60,16 +60,18 @@ struct MenuView: View {
                     self.menu = fetched
                     
                     let nowHour = Calendar.current.component(.hour, from: Date())
-
-                    if nowHour >= 8 && nowHour < 11 {
-                        self.selectedMealName = "Breakfast"
-                    } else if nowHour >= 11 && nowHour < 17 {
-                        self.selectedMealName = "Lunch"
-                    } else if nowHour >= 17 && nowHour < 20 {
-                        self.selectedMealName = "Dinner"
-                    } else if nowHour >= 20 || nowHour < 8 {
-                        self.selectedMealName = "Late Night"
-                    }
+                    
+                    if availableMeals.count < 3 {
+                        self.selectedMealName = "all"
+                    } else if nowHour >= 8 && nowHour < 11 {
+                            self.selectedMealName = "Breakfast"
+                        } else if nowHour >= 11 && nowHour < 17 {
+                            self.selectedMealName = "Lunch"
+                        } else if nowHour >= 17 && nowHour < 20 {
+                            self.selectedMealName = "Dinner"
+                        } else if nowHour >= 20 || nowHour < 8 {
+                            self.selectedMealName = "Late Night"
+                        }
     
                     self.isLoading = false
                 }
@@ -109,7 +111,7 @@ struct CategoryGroup: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            if category.categoryName.count(where: { $0 == " " }) <= 1 {
+            if category.categoryName.count(where: { $0 == " " }) <= 5 {
                 Text(category.categoryName)
                     .font(.caption.bold())
                     .foregroundColor(.accentColor)

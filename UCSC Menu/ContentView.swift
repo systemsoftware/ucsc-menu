@@ -41,7 +41,7 @@ struct ContentView: View {
 
     func moveLocation(from source: IndexSet, to destination: Int) {
         locations.move(fromOffsets: source, toOffset: destination)
-        saveOrder() // Save immediately after reordering
+        saveOrder()
     }
     
     func saveOrder() {
@@ -50,16 +50,13 @@ struct ContentView: View {
         }
     }
 
-    // Load the custom order on launch
     func loadOrder(fetchedLocations: [DiningLocation]) {
         if let data = UserDefaults.standard.data(forKey: "SavedLocationOrder"),
            let savedOrder = try? JSONDecoder().decode([DiningLocation].self, from: data) {
-            
-            // Reconcile: Ensure saved locations still exist in the fresh fetch
+
             let currentIds = Set(fetchedLocations.map { $0.id })
             self.locations = savedOrder.filter { currentIds.contains($0.id) }
             
-            // Add any NEW locations that weren't in the saved order
             let savedIds = Set(savedOrder.map { $0.id })
             let newLocations = fetchedLocations.filter { !savedIds.contains($0.id) }
             self.locations.append(contentsOf: newLocations)
@@ -78,10 +75,6 @@ struct LocationGlassCard: View {
                 Text(location.name.split(separator: "+").joined(separator: " "))
                     .font(.headline)
                     .foregroundColor(.primary)
-                
-                Text("Open for Dining")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
             }
             
             Spacer()
