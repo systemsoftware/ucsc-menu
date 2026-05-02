@@ -1,9 +1,5 @@
 import SwiftUI
 
-import SwiftUI
-
-import SwiftUI
-
 struct MenuView: View {
     var provider: UCSCDiningProvider
     var location: DiningLocation
@@ -20,6 +16,8 @@ struct MenuView: View {
     var filteredMenu: [Meal] {
         selectedMealName != "all" ? menu.filter { $0.mealName == selectedMealName } : menu
     }
+    
+    @State private var activeFlags: Set<DietaryFlag> = []
 
     var body: some View {
         ZStack {
@@ -42,9 +40,9 @@ struct MenuView: View {
                     }
 
                     ScrollView {
-                        VStack(spacing: 25) {
+                        VStack(alignment: .leading, spacing: 25) {
                             ForEach(filteredMenu) { meal in
-                                MealSection(meal: meal)
+                                MealSection(meal: meal, activeFlags:activeFlags, location:location)
                             }
                         }
                         .padding()
@@ -85,6 +83,11 @@ struct MenuView: View {
                 }
             }
         }
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                FlagFilterButton(activeFlags: $activeFlags)
+            }
+        }
     }
 }
 
@@ -92,6 +95,10 @@ struct MenuView: View {
 struct MealSection: View {
     let meal: Meal
     
+    let activeFlags: Set<DietaryFlag>
+    
+    let location: DiningLocation
+   
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(meal.mealName.uppercased())
@@ -99,9 +106,9 @@ struct MealSection: View {
                 .padding(.leading, 8)
                 .foregroundColor(.secondary)
 
-            VStack(spacing: 1) {
+            VStack(alignment: .leading, spacing: 1) {
                 ForEach(meal.categories) { category in
-                    CategoryGroup(category: category)
+                    CategoryGroup(category: category, activeFlags:activeFlags, location:location, mname: meal.mealName)
                 }
             }
             .background(.ultraThinMaterial)
@@ -113,37 +120,59 @@ struct MealSection: View {
         }
     }
 }
-
 struct CategoryGroup: View {
     let category: MenuCategory
+    @AppStorage("infoType") var showInfo = 0
+    let activeFlags: Set<DietaryFlag>
+    var location: DiningLocation
+    var mname = ""
+    
+    var displayedItems: [MenuItem] {
+        category.filtered(by: activeFlags)?.items ?? []
+    }
+    
+    let today = Date()
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if category.categoryName.count(where: { $0 == " " }) <= 5 {
+        VStack(alignment: .leading, spacing: 0) {
+
+            if category.categoryName.split(separator: " ").count <= 5 {
                 Text(category.categoryName)
-                    .font(.caption.bold())
+                    .font(.subheadline)
+                    .fontWeight(.bold)
                     .foregroundColor(.accentColor)
+                    .padding(.horizontal)
                     .padding(.top, 10)
             }
+            
 
-            ForEach(category.items) { item in
-                HStack {
-                    Text(item.name)
-                        .font(.body)
-                    Spacer()
-                    if item.isVegan {
-                        Image(systemName: "leaf.fill")
-                            .foregroundColor(.green)
-                            .font(.caption)
+            ForEach(displayedItems) { item in
+                NavigationLink {
+                    NutritionLabelView(
+                        item: item,
+                        location: location,
+                        date: today.formatted(.dateTime.month(.twoDigits).day(.twoDigits).year()),
+                        mealName:mname
+                    )
+                } label: {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(item.name)
+                            .font(.body)
+                            .multilineTextAlignment(.leading)
+                        
+                        if showInfo != 2 {
+                            FlagView(item: item, style: showInfo == 0 ? .detailed : .compact)
+                        }
                     }
+                    .padding(.vertical, 8)
+                    .padding(.horizontal)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
                 }
-                if item.id != category.items.last?.id {
-                    Divider().opacity(0.2)
-                }
+                .buttonStyle(.plain)
+
             }
         }
-        .padding(.horizontal)
-        .padding(.bottom, 10)
     }
 }
 

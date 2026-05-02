@@ -59,11 +59,33 @@ class UCSCDiningProvider {
 }
 
 // MARK: - Models
-struct MenuItem: Identifiable {
+struct MenuItem: Identifiable, Hashable {
     let id = UUID()
     let name: String
-    let containsGluten: Bool
+
+    // Lifestyle / certifications
     let isVegan: Bool
+    let isVegetarian: Bool
+    let isHalal: Bool
+
+    // Allergens
+    let containsGluten: Bool
+    let containsWheat: Bool
+    let containsEggs: Bool
+    let containsMilk: Bool
+    let containsFish: Bool
+    let containsShellfish: Bool
+    let containsSoy: Bool
+    let containsNuts: Bool       // peanuts / generic nuts
+    let containsTreeNuts: Bool
+    let containsSesame: Bool
+
+    // Contains (informational)
+    let containsBeef: Bool
+    let containsPork: Bool
+    let containsAlcohol: Bool
+    
+    var labelURL: URL? = nil
 }
 
 struct MenuCategory: Identifiable {
@@ -136,10 +158,29 @@ func fetchAndParseMenu(urlString: String) async -> [Meal] {
                     }
 
                     let icons = try row.select("img").compactMap { try? $0.attr("src") }
-                    let isVegan = icons.contains { $0.contains("vegan.gif") }
-                    let hasGluten = icons.contains { $0.contains("gluten.gif") || $0.contains("wheat.gif") }
-                    
-                    let item = MenuItem(name: itemName, containsGluten: hasGluten, isVegan: isVegan)
+
+                    let item = MenuItem(
+                        name: itemName,
+                        // Lifestyle / certifications
+                        isVegan:        icons.contains { $0.contains("vegan.gif") },
+                        isVegetarian:   icons.contains { $0.contains("veggie.gif") },
+                        isHalal:        icons.contains { $0.contains("halal.gif") },
+                        // Allergens
+                        containsGluten:    icons.contains { $0.contains("gluten.gif") },
+                        containsWheat:     icons.contains { $0.contains("wheat.gif") },
+                        containsEggs:      icons.contains { $0.contains("eggs.gif") },
+                        containsMilk:      icons.contains { $0.contains("milk.gif") },
+                        containsFish:      icons.contains { $0.contains("fish.gif") },
+                        containsShellfish: icons.contains { $0.contains("shellfish.gif") },
+                        containsSoy:       icons.contains { $0.contains("soy.gif") },
+                        containsNuts:      icons.contains { $0.contains("nuts.gif") },
+                        containsTreeNuts:  icons.contains { $0.contains("treenut.gif") },
+                        containsSesame:    icons.contains { $0.contains("sesame.gif") },
+                        // Contains (informational)
+                        containsBeef:    icons.contains { $0.contains("beef.gif") },
+                        containsPork:    icons.contains { $0.contains("pork.gif") },
+                        containsAlcohol: icons.contains { $0.contains("alcohol.gif") }
+                    )
                     currentCategory?.items.append(item)
                 }
             }
@@ -157,4 +198,47 @@ func fetchAndParseMenu(urlString: String) async -> [Meal] {
         print("Parsing error: \(error)")
         return []
     }
+}
+
+
+func fetchRecNumLookup(for location: DiningLocation, mealName: String, date: String) async -> [String: String] {
+    var components = URLComponents(string: UCSCDiningProvider.rootURL + "longmenu.aspx")
+    components?.queryItems = [
+        URLQueryItem(name: "sName",        value: "UC Santa Cruz Dining"),
+        URLQueryItem(name: "locationNum",  value: location.id),
+        URLQueryItem(name: "locationName", value: location.name),
+        URLQueryItem(name: "naFlag",       value: "1"),
+        URLQueryItem(name: "WeeksMenus",   value: "UCSC - This Week's Menus"),
+        URLQueryItem(name: "dtdate",       value: date),   // "05/01/2026"
+        URLQueryItem(name: "mealName",     value: mealName),
+    ]
+    guard let url = components?.url else { return [:] }
+
+    guard let (data, _) = try? await URLSession.shared.data(from: url),
+          let html = String(data: data, encoding: .utf8),
+          let doc = try? SwiftSoup.parse(html) else { return [:] }
+
+    var lookup: [String: String] = [:]
+    if let links = try? doc.select("div.longmenucoldispname a") {
+        for link in links {
+            guard let href = try? link.attr("href"),
+                  let name = try? link.text(),
+                  let recNum = URLComponents(string: href)?
+                .queryItems?.first(where: { $0.name == "RecNumAndPort" })?.value
+            else { continue }
+            lookup[name.trimmingCharacters(in: .whitespaces)] = recNum
+        }
+    }
+    return lookup
+}
+
+func makeLabelURL(for location: DiningLocation, date: String, recNumAndPort: String) -> URL? {
+    var components = URLComponents(string: UCSCDiningProvider.rootURL + "label.aspx")
+    components?.queryItems = [
+        URLQueryItem(name: "locationNum",  value: location.id),
+        URLQueryItem(name: "locationName", value: location.name),
+        URLQueryItem(name: "dtdate",       value: date),
+        URLQueryItem(name: "RecNumAndPort", value: recNumAndPort),
+    ]
+    return components?.url
 }
