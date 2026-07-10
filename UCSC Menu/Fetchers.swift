@@ -1,9 +1,6 @@
 import Foundation
 import SwiftSoup
 
-import Foundation
-import SwiftSoup
-
 // MARK: - Models
 struct DiningLocation: Identifiable, Codable, Hashable {
     let id: String

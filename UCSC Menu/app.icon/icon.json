@@ -1,20 +1,13 @@
 {
   "fill" : {
-    "automatic-gradient" : "extended-srgb:0.00000,0.53333,1.00000,1.00000"
+    "automatic-gradient" : "display-p3:0.29718,0.59211,0.24074,1.00000"
   },
   "groups" : [
     {
       "layers" : [
         {
-          "image-name" : "dining-logo-foodpro.png",
-          "name" : "dining-logo-foodpro",
-          "position" : {
-            "scale" : 3,
-            "translation-in-points" : [
-              0,
-              0
-            ]
-          }
+          "image-name" : "fork 3.png",
+          "name" : "forkandspoon"
         }
       ],
       "shadow" : {
